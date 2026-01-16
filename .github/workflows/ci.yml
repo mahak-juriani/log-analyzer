@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
           cache: maven
 
-      - name: Build and Test
+      - name: Build and run tests
         run: ./mvnw clean test

@@ -8,7 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+  
+  
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,3 +23,26 @@ jobs:
 
       - name: Build and run tests
         run: ./mvnw clean test
+
+  codeql:
+    name: CodeQL SAST Scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java
+
+      - name: Build project
+        run: ./mvnw clean compile
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

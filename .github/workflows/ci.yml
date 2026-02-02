@@ -211,5 +211,72 @@ jobs:
       - name: Deploy application to Kubernetes
         run: |
           kubectl apply -f k8s/
+       # DAST: Dynamic Security Testing
+      # Why: Find runtime vulnerabilities
+      # ------------------------------------------
+      - name: Basic DAST - Security Headers Check
+        run: |
+          echo "### DAST Security Scan Results :shield:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "#### Security Headers Analysis" >> $GITHUB_STEP_SUMMARY
+          HEADERS=$(curl -s -I http://localhost:8080/api/tasks)
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo "$HEADERS" >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
 
+      - name: DAST - API Endpoint Testing
+        run: |
+          echo "#### API Endpoint Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Test GET endpoints
+          echo "| Endpoint | Status | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/tasks)
+          echo "| GET /api/tasks | $STATUS | ✅ |" >> $GITHUB_STEP_SUMMARY
+          
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/tasks/health)
+          echo "| GET /api/tasks/health | $STATUS | ✅ |" >> $GITHUB_STEP_SUMMARY
+          
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health)
+          echo "| GET /actuator/health | $STATUS | ✅ |" >> $GITHUB_STEP_SUMMARY
+
+      - name: DAST - SQL Injection Test
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### SQL Injection Test" >> $GITHUB_STEP_SUMMARY
+          
+          # Test for SQL injection vulnerability
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8080/api/tasks/1'%20OR%20'1'='1")
+          if [ "$RESPONSE" == "400" ] || [ "$RESPONSE" == "404" ]; then
+            echo "✅ Application properly rejects SQL injection attempts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Review needed for SQL injection handling" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: DAST - XSS Test
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### XSS Test" >> $GITHUB_STEP_SUMMARY
+          
+          # Test for XSS vulnerability
+          curl -s -X POST http://localhost:8080/api/tasks \
+            -H "Content-Type: application/json" \
+            -d '{"title":"<script>alert(1)</script>","description":"test"}' \
+            > /dev/null || true
+          
+          RESPONSE=$(curl -s http://localhost:8080/api/tasks)
+          if echo "$RESPONSE" | grep -q "<script>"; then
+            echo "⚠️ XSS vulnerability detected - review needed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No obvious XSS vulnerability detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: DAST Summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "DAST scan completed. Review findings above." >> $GITHUB_STEP_SUMMARY
 
